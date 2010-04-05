@@ -1,0 +1,64 @@
+<p>(background)<br />I've been playing around with <a title="Songbird" href="http://getsongbird.com" target="_blank">Mozilla Songbird</a>, and am frustrated by the lack of global hotkeys, which are essential to any good media player. As a result, I did a lot of googling, etc. ;), and figure I might as well save the next guy a bit of trouble.</p>
+<h3>Anyway, here's a little tutorial on playing with global hotkeys in linux. The library I'm using is XLib, as most window managers are built on X, so this will be compatible. The code is in C, but can probably be ported....</h3>
+<pre>// Derived from a tutorial by Ch. Tronche (http://tronche.com/gui/x/xlib-tutorial/2nd-program-anatomy.html)
+
+#include &lt;X11/Xlib.h&gt;
+#include &lt;stdio.h&gt;
+main()
+{
+    Window root;
+    XEvent e;
+    int F2,F3,F4,F5,F6;
+    
+    // Open the display
+    Display *dpy = XOpenDisplay(0);
+    if (!dpy)return;
+    // Get the root window -- so keys will be global
+    root = DefaultRootWindow(dpy);
+    
+    F2 = XKeysymToKeycode(dpy, XStringToKeysym("F2"));
+    F3 = XKeysymToKeycode(dpy, XStringToKeysym("F3"));
+    F4 = XKeysymToKeycode(dpy, XStringToKeysym("F4"));
+    F5 = XKeysymToKeycode(dpy, XStringToKeysym("F5"));
+    F6 = XKeysymToKeycode(dpy, XStringToKeysym("F6"));
+    
+    // register the keys
+    XGrabKey(dpy, F2, 0, root, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy, F3, 0, root, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy, F4, 0, root, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy, F5, 0, root, True, GrabModeAsync, GrabModeAsync);
+    XGrabKey(dpy, F6, 0, root, True, GrabModeAsync, GrabModeAsync);
+    
+    // wait for events
+    for(;;) {
+        XNextEvent(dpy, &amp;e);
+        if (e.type == KeyPress){
+            if (e.xkey.keycode == F4)
+                break;
+            else{
+                if (e.xkey.keycode == F2)printf("F2!!!\n");
+                else if (e.xkey.keycode == F3)printf("F3!!!\n");
+                else if (e.xkey.keycode == F5)printf("F5!!!\n");
+                else if (e.xkey.keycode == F6)printf("F6!!!\n");
+            }
+        }
+    }
+    // clean up
+    XUngrabKey(dpy, F2, 0, root);
+    XUngrabKey(dpy, F3, 0, root);
+    XUngrabKey(dpy, F4, 0, root);
+    XUngrabKey(dpy, F5, 0, root);
+    XUngrabKey(dpy, F6, 0, root);
+}
+
+</pre>
+<p> </p>
+<h1>So What's happening here??<br /></h1>
+<p>Well, after initializing X, we've got a bunch of</p>
+<pre>F2 = <a href="http://tronche.com/gui/x/xlib/utilities/keyboard/XKeysymToKeycode.html" target="_blank">XKeysymToKeycode</a>(dpy, <a href="http://tronche.com/gui/x/xlib/utilities/keyboard/XStringToKeysym.html" target="_blank">XStringToKeysym</a>("F2"));</pre>
+<p>This is translates a human-freindly string "F2" into a machine-readable keycode, for later use.</p>
+<p>Then, to register our keys, we use the XGrabKey function:</p>
+<pre><a href="http://tronche.com/gui/x/xlib/input/XGrabKey.html" target="_blank">XGrabKey</a>(Display *display, int keycode, uint modifiers, Window grab_window, Bool owner_events, int pointer_mode, int keyboard_mode);</pre>
+<p>the "modifiers" int can be any of <strong>ShiftMask</strong>, <strong>LockMask</strong>, <strong>ControlMask</strong>, <strong>Mod1Mask</strong>, <strong>Mod2Mask</strong>, <strong>Mod3Mask</strong>, <strong>Mod4Mask</strong>, and <strong>Mod5Mask</strong>. Alternatively, <strong>AnyModifier</strong> can be used as a catch-all.</p>
+<p>The next bit is for handling the events -- pretty basic stuff.</p> <p>At
+the end, its good practice to release your grabbed keys.</p>
