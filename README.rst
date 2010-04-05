@@ -6,11 +6,13 @@ minimizing loss -- all old urls are mapped (through contrib.redirect) to the
 new posts, so no SEO value is lost.
 
 Works:
+
 - post migration to basic.blog models
 - url redirect mapping, both from the /node/# url and whatever extra redirect
   url you had
 
 TODO:
+
 - user migration
 - comments migration
 - flatpage migration
