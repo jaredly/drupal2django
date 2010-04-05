@@ -33,20 +33,22 @@ def clear_db():
     Post.objects.all().delete()
     Redirect.objects.all().delete()
 
-def drupal_node_to_django(node, revision, slug, user):
+def drupal_node_to_django(node, revision, slug, user, drupal_root):
     from basic.blog.models import Post
+    from django.conf import settings
     dct = {'slug':slug,'title':node.title}
-    text,skipped = convert_html(revision.body)
-    stext, sk2 = convert_html(revision.teaser)
-    if skipped or sk2:
+    rest = convert_html(revision.body, media_root=settings.MEDIA_ROOT, drupal_root=drupal_root, media_url=settings.MEDIA_URL)
+    rest2 = convert_html(revision.teaser)
+    if rest.skipped or rest2.skipped:
         print 'Body not totally parsed', node.title
         text = revision.body
         stext = revision.teaser
         dct['format'] = 'html'
     else:
         dct['format'] = 'rest'
-    dct['body'] = text
-    dct['tease'] = stext
+
+    dct['body'] = rest.rest
+    dct['tease'] = rest2.rest
     dct['status'] = node.status + 1
     dct['created'] = makedtime(node.created)
     dct['publish'] = makedtime(node.changed)
@@ -55,17 +57,20 @@ def drupal_node_to_django(node, revision, slug, user):
     dct['author'] = user
     # no tags, categories, objects, or author yet.
     post = Post(**dct)
-    return post
+    return post, rest.images
 
 def migrate(drupals, djangos):
     setup(drupals)
 
     sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
-    from drupal2django.models import Users, Node, NodeRevisions, UrlAlias
+    from drupal2django.models import Users, Node, NodeRevisions, UrlAlias, Files
     sys.path.pop(0)
 
     nodes = get_nodes(Node, NodeRevisions)
     users = Users.objects.all()
+    files = Files.objects.all()
+    from django.conf import settings
+    drupal_root = getattr(settings, 'DRUPAL_ROOT', None)
 
     urls = list(UrlAlias.objects.all())
 
@@ -74,7 +79,8 @@ def migrate(drupals, djangos):
     clear_db()
 
     django_save_users(users)
-    django_save_nodes(nodes, users, urls)
+    django_save_nodes(nodes, users, urls, drupal_root)
+    #django_move_files(files, drupal_root)
 
 def django_save_users(users):
     from django.contrib.auth.models import User
@@ -90,7 +96,7 @@ def django_save_users(users):
         print 'saving',user.name
         User(**dct).save()
 
-def django_save_nodes(nodes, users, urls):
+def django_save_nodes(nodes, users, urls, drupal_root):
     from django.contrib.auth.models import User
     url_dict = dict((url.src,url) for url in urls)
     user_dict = dict((user.uid,user.name) for user in users)
@@ -103,10 +109,47 @@ def django_save_nodes(nodes, users, urls):
         
         user = User.objects.get(username=user_dict[node.uid])
 
-        post = drupal_node_to_django(node, revision, slug, user)
+        post, images = drupal_node_to_django(node, revision, slug, user, drupal_root)
         post.save()
         drupal_redirect_django(path, post)
-    
+        yield images
+
+def django_move_files(files, root):
+    '''move files that drupal knows about to the media folder, and add a redirect for each.
+    TODO: make the destination directory configurable, don't die on duplicate names.'''
+
+    from django.contrib.redirects.models import Redirect
+    from django.contrib.sites.models import Site
+    current = Site.objects.get_current()
+
+    from django.conf import settings
+    filedir = os.path.join(settings.MEDIA_ROOT, 'from_drupal')
+
+    if not os.path.exists(filedir):
+        os.mkdir(filedir)
+    elif not os.path.isdir(filedir):
+        raise Exception, '%s exists and is not a directory.' % filedir
+
+    for file in files:
+        django_move_file(file.filepath, root, filedir)
+
+def django_move_file(filepath, root):
+    name = os.path.basename(filepath)
+    realpath = os.path.join(root, filepath)
+    nname = os.path.join(filedir, name)
+    from django.conf import settings
+    if os.path.exists(nname):
+        #print 'Duplicate file name. skipping %s (from %s)' % (name, filepath)
+        #continue
+        pass
+    if not os.path.exists(realpath):
+        print 'file not found (%s). skipping' % realpath
+        return 
+    open(nname, 'wb').write(open(realpath, 'rb').read())
+    try:
+        Redirect(site=current, old_path='/'+filepath+'/', new_path=settings.MEDIA_URL + 'from_drupal/%s' % name).save()
+    except:pass
+        
 
 def get_nodes(Node, NodeRevisions):
     nodes = []

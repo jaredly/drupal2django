@@ -10,16 +10,17 @@ Works:
 - post migration to basic.blog models
 - url redirect mapping, both from the /node/# url and whatever extra redirect
   url you had
+- user migration
 
 TODO:
 
-+ user migration
-+ comments migration
-+ flatpage migration
-+ menu migration
-+ more configuration
-    * import nodes of more types (not just Post)
-    * export to more than just basic.blog
-+ copy images and linked files
-+ be aware of CCK fields
+- comments migration
+- flatpage migration
+- menu migration
+- more configuration
+    + import nodes of more types (not just Post)
+    + export to more than just basic.blog
+    + fine grained user control
+- copy images and linked files
+- be aware of CCK fields
 
