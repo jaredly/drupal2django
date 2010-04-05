@@ -13,13 +13,13 @@ Works:
 
 TODO:
 
-- user migration
-- comments migration
-- flatpage migration
-- menu migration
-- more configuration
++ user migration
++ comments migration
++ flatpage migration
++ menu migration
++ more configuration
     * import nodes of more types (not just Post)
     * export to more than just basic.blog
-- copy images and linked files
-- be aware of CCK fields
++ copy images and linked files
++ be aware of CCK fields
 
