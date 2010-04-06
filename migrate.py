@@ -38,7 +38,7 @@ def drupal_node_to_django(node, revision, slug, user, drupal_root):
     from django.conf import settings
     dct = {'slug':slug,'title':node.title}
     rest = convert_html(revision.body, media_root=settings.MEDIA_ROOT, drupal_root=drupal_root, media_url=settings.MEDIA_URL)
-    rest2 = convert_html(revision.teaser)
+    rest2 = convert_html(revision.teaser, media_root=settings.MEDIA_ROOT, drupal_root=drupal_root, media_url=settings.MEDIA_URL)
     if rest.skipped or rest2.skipped:
         print 'Body not totally parsed', node.title
         text = revision.body
@@ -67,6 +67,7 @@ def migrate(drupals, djangos):
     sys.path.pop(0)
 
     nodes = get_nodes(Node, NodeRevisions)
+    print 'nodes:',len(nodes)
     users = Users.objects.all()
     files = Files.objects.all()
     from django.conf import settings
@@ -80,6 +81,7 @@ def migrate(drupals, djangos):
 
     django_save_users(users)
     django_save_nodes(nodes, users, urls, drupal_root)
+
     #django_move_files(files, drupal_root)
 
 def django_save_users(users):
@@ -93,7 +95,6 @@ def django_save_users(users):
         dct = {'username':user.name, 'email':user.mail, 'password':user.pass_field,
                 'last_login':makedtime(user.login),
                 'date_joined':makedtime(user.created)}
-        print 'saving',user.name
         User(**dct).save()
 
 def django_save_nodes(nodes, users, urls, drupal_root):
@@ -112,7 +113,6 @@ def django_save_nodes(nodes, users, urls, drupal_root):
         post, images = drupal_node_to_django(node, revision, slug, user, drupal_root)
         post.save()
         drupal_redirect_django(path, post)
-        yield images
 
 def django_move_files(files, root):
     '''move files that drupal knows about to the media folder, and add a redirect for each.

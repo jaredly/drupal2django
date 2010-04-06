@@ -1,6 +1,7 @@
 #!/usr/bin/env python2.6
 from BeautifulSoup import BeautifulSoup, Tag, NavigableString
 import re
+import os
 
 def convert_html(text, **args):
     p = Parser(text, **args)
@@ -33,7 +34,7 @@ class Parser:
             if isinstance(item, NavigableString):
                 text += unicode(item)
             else:
-                stext = parsetag(item)
+                stext = self.parsetag(item)
                 text += stext
         ## paragraph
         if tag.name in ('div','p'):
@@ -58,11 +59,12 @@ class Parser:
         ## links
         elif tag.name == 'a':
             if '\n' in text:
-                return text, True
+                self.skipped = True
+                return text
             return u'`%s <%s>`_' % (text, tag['href'])
         ## line breaks
         elif tag.name == 'br':
-            return u'\n\n', skipped
+            return u'\n\n'
         ## bold text
         elif tag.name in ('strong','b'):
             return u'**%s**' % text
@@ -98,12 +100,13 @@ class Parser:
         return text
     
     def move_file(self, src):
-        if self.image_root is None:
+        if self.image_root is None or src.startswith('http://') or src.startswith('file://'):
             return src
         base = os.path.basename(src)
+        src = src.lstrip('/').replace('%20',' ')
         if os.path.exists(os.path.join(self.image_root, base)):
             print 'skipping',src
-        else:
+        elif os.path.exists(os.path.join(self.drupal_root, src)):
             open(os.path.join(self.image_root, base), 'wb').write(open(os.path.join(self.drupal_root, src),'rb').read())
         return os.path.join(self.media_url, 'images', base)
 
